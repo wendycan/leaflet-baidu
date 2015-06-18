@@ -167,7 +167,7 @@ L.CRS.BEPSG3857 = L.extend({}, L.CRS, {
 L.Baidu = L.TileLayer.extend({
     options: {
         subdomains: ['online1', 'online2', 'online3'],
-        attribution: '© 2014 Baidu - GS(2012)6003;- Data © <a target="_blank" href="http://www.navinfo.com/">NavInfo</a> & <a target="_blank" href="http://www.cennavi.com.cn/">CenNavi</a>',
+        attribution: '© 2014 Baidu - GS(2012)6003;- Data © <a target="_blank" href="http://www.navinfo.com/">NavInfo</a> & <a target="_blank" href="http://www.cennavi.com.cn/">CenNavi</a> & <a target="_blank" href="http://www.365ditu.com/">DaoDaoTong</a>',
     },
 
     /**
@@ -244,23 +244,22 @@ L.map = function (id, options) {
         return point;
     };
 
-    var _getNewPixelOriginBaidu = function (center, zoom) {
-        var viewHalf = this.getSize()._divideBy(2);
-        return this.project(center, zoom)._subtract(viewHalf)._add(this._getMapPanePos())._round();
+    var _containerPointToLayerPoint = function (point) { // (Point)
+        var pos = this._getMapPanePos();
+        return L.point(point)._subtract(L.point(pos.x, 0))._add(L.point(0, pos.y));
     };
 
-    // layer point of the current center
-    var _getCenterLayerPointBaidu = function () {
-        return this.containerPointToLayerPoint(this.getSize()._divideBy(2));
+    var _layerPointToContainerPoint = function (point) { // (Point)
+        var pos = this._getMapPanePos();
+        return L.point(point)._add(L.point(pos.x, 0))._subtract(L.point(0, pos.y));
     };
 
     //if option has baidu, use custom method
     if (options.baidu === true) {
         map._getTopLeftPoint = _getTopLeftPointBaidu;
         map.setZoomAround = setZoomAroundBaidu;
-        map._getNewPixelOrigin = _getNewPixelOriginBaidu;
-        // TODO: just same code as Map.js
-        map._getCenterLayerPoint = _getCenterLayerPointBaidu;
+        map.containerPointToLayerPoint = _containerPointToLayerPoint;
+        map.layerPointToContainerPoint = _layerPointToContainerPoint;
     }
 
     return map;

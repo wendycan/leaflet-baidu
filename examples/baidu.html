@@ -33,7 +33,9 @@
             // L.control.scale().addTo(map);
             var baidu = new L.Baidu('wEdGBRYrr5t1tF9X9cGbSmkB');
             map.addLayer(baidu);
-            L.marker(map.getCenter()).addTo(map);
+            L.marker(map.getCenter()).bindPopup(function (layer) {
+                return 'Leaflet ID is ' + layer._leaflet_id;
+            }).addTo(map);
         </script>
     </body>
 </html>
