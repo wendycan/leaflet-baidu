@@ -167,7 +167,6 @@ L.CRS.BEPSG3857 = L.extend({}, L.CRS, {
 L.Baidu = L.TileLayer.extend({
     options: {
         subdomains: ['online1', 'online2', 'online3'],
-        //TODO: decode utf8 characters in attribution
         attribution: '© 2014 Baidu - GS(2012)6003;- Data © <a target="_blank" href="http://www.navinfo.com/">NavInfo</a> & <a target="_blank" href="http://www.cennavi.com.cn/">CenNavi</a>',
     },
 
