@@ -50,8 +50,12 @@ L.Projection.BaiduSphericalMercator = {
         var MIN_Y= -11708041.66;
         var MAX_Y= 12474104.17;
         var bounds = L.bounds(
-            [-MAX_X, MIN_Y], //180, -71.988531
-            [MAX_X, MAX_Y]  //-180, 74.000022
+            [-MAX_X, MIN_Y], //-180, -71.988531
+            [MAX_X, MAX_Y]  //180, 74.000022
+        );
+        bounds = new L.Bounds(
+            [-33554432, -33554432],
+            [33554432, 33554432]
         );
         return bounds;
     })()
@@ -68,6 +72,7 @@ L.BTransformation = function () {
 };
 
 L.BTransformation.prototype = {
+    // MAXZOOM: 19,
     MAXZOOM: 18,
     /**
      * Don't know how it used currently.
@@ -99,9 +104,9 @@ L.BTransformation.prototype = {
      * @return {Object} point, point coordinate
      */
     untransform: function (point, zoom) {
-        point.x = point.x << (this.MAXZOOM - zoom);
-        point.y = point.y << (this.MAXZOOM - zoom);
-        return point;
+        var x = point.x << (this.MAXZOOM - zoom);
+        var y = point.y << (this.MAXZOOM - zoom);
+        return new L.Point(x, y);
     }
 };
 
@@ -114,7 +119,7 @@ L.CRS.BEPSG3857 = L.extend({}, L.CRS, {
     /**
      * transform latLng to pixel coordinate
      *
-     * @method untransform
+     * @method latLngToPoint
      * @param {Object} latlng latitude and longitude
      * @param {Number} zoom zoom level of the map
      * @return {Object} pixel coordinate calculated for latLng
@@ -127,7 +132,7 @@ L.CRS.BEPSG3857 = L.extend({}, L.CRS, {
     /**
      * transform pixel coordinate to latLng
      *
-     * @method untransform
+     * @method pointToLatLng
      * @param {Object} point pixel coordinate
      * @param {Number} zoom zoom level of the map
      * @return {Object} latitude and longitude
@@ -135,6 +140,17 @@ L.CRS.BEPSG3857 = L.extend({}, L.CRS, {
     pointToLatLng: function (point, zoom) { // (Point, Number[, Boolean]) -> LatLng
         var untransformedPoint = this.transformation.untransform(point, zoom);
         return this.projection.unproject(untransformedPoint);
+    },
+
+    // returns the bounds of the world in projected coords if applicable
+    getProjectedBounds: function (zoom) {
+        if (this.infinite) { return null; }
+
+        var b = this.projection.bounds,
+            min = this.transformation.transform(b.min, zoom),
+            max = this.transformation.transform(b.max, zoom);
+
+        return L.bounds(min, max);
     },
 
     code: 'EPSG:3857',
@@ -152,7 +168,7 @@ L.Baidu = L.TileLayer.extend({
     options: {
         subdomains: ['online1', 'online2', 'online3'],
         //TODO: decode utf8 characters in attribution
-        attribution: '© 2014 Baidu - GS(2012)6003;- Data © <a target="_blank" href="http://www.navinfo.com/">NavInfo</a> & <a target="_blank" href="http://www.cennavi.com.cn/">CenNavi</a> & <a target="_blank" href="http://www.365ditu.com/">DaoDaoTong</a>',
+        attribution: '© 2014 Baidu - GS(2012)6003;- Data © <a target="_blank" href="http://www.navinfo.com/">NavInfo</a> & <a target="_blank" href="http://www.cennavi.com.cn/">CenNavi</a>',
     },
 
     /**
@@ -163,9 +179,9 @@ L.Baidu = L.TileLayer.extend({
      * @param {Object} options, option of the map
      */
     initialize: function (key, options) {
-        L.Util.setOptions(this, options);
         this._key = key;
-        this._url = 'http://{subdomain}.map.bdimg.com/tile/?qt=tile&x={x}&y={y}&z={z}&styles=pl&udt=20140711';
+        var url = 'http://{s}.map.bdimg.com/tile/?qt=tile&x={x}&y={y}&z={z}&styles=pl';
+        L.TileLayer.prototype.initialize.call(this, url, options);
     },
 
     /**
@@ -174,72 +190,16 @@ L.Baidu = L.TileLayer.extend({
      * if point.y is greater than 256, i.e. 291=>35, 547=>-221
      *
      * @method _getTilePos
-     * @param {Object} tilePoint tile coordinate
+     * @param {Object} coords tile coordinate
      * @return {Object} point left and top property of <img>
      */
-    _getTilePos: function (tilePoint) {
-        var origin = this._map.getPixelOrigin();
-        var tileSize = this._getTileSize();
-
-        var point = tilePoint.multiplyBy(tileSize).subtract(origin);
-        if (point.y <= 256) {
-            point.y = (
-                2 * Math.abs(
-                    Math.floor(point.y / tileSize)
-                ) + 1
-            ) * tileSize + point.y;
-        } else {
-            point.y = point.y - (
-                Math.floor(point.y / tileSize) * 2 - 1
-            ) * tileSize;
-        }
-        return point;
-    },
-
-    /**
-     * Override _update method in map. redefine bounds.
-     * Pros: no blank row on the top or bottom
-     * Cons: some times it might load a row that is not necessary.
-     *
-     * @method _updateBaidu
-     */
-     _update: function () {
-        if (!this._map) { return; }
+    _getTilePos: function (coords) {
         var map = this._map,
-            bounds = map.getPixelBounds(),
-            zoom = map.getZoom(),
-            tileSize = this._getTileSize();
-        if (zoom > this.options.maxZoom || zoom < this.options.minZoom) {
-            return;
-        }
-
-        boundsMax = bounds.max.divideBy(tileSize);
-        boundsMax.x = Math.floor(boundsMax.x);
-        boundsMax.y = Math.ceil(boundsMax.y);
-
-        var tileBounds = L.bounds(
-            bounds.min.divideBy(tileSize)._floor(),
-            boundsMax
-        );
-
-        this._addTilesFromCenterOut(tileBounds);
-        if (this.options.unloadInvisibleTiles || this.options.reuseTiles) {
-            this._removeOtherTiles(tileBounds);
-        }
-    },
-
-    /**
-     * get a tile url of the map
-     *
-     * @method getTileUrl
-     * @param {Object} coords, tile coordinate
-     * @return {String} url of a tile
-     */
-    getTileUrl: function(coords) {
-        return this._url.replace('{subdomain}', this._getSubdomain(coords))
-            .replace('{x}', coords.x)
-            .replace('{y}', coords.y)
-            .replace('{z}', this._getZoomForUrl());
+            size = map.getSize(),
+            origin = this._level.origin;
+        var offsetX = coords.x * this._tileSize - origin.x;
+        var offsetY = origin.y + size.y - (coords.y + 1) * this._tileSize;
+        return new L.Point(offsetX, offsetY);
     }
 });
 
@@ -285,11 +245,25 @@ L.map = function (id, options) {
         return point;
     };
 
+    var _getNewPixelOriginBaidu = function (center, zoom) {
+        var viewHalf = this.getSize()._divideBy(2);
+        return this.project(center, zoom)._subtract(viewHalf)._add(this._getMapPanePos())._round();
+    };
+
+    // layer point of the current center
+    var _getCenterLayerPointBaidu = function () {
+        return this.containerPointToLayerPoint(this.getSize()._divideBy(2));
+    };
+
     //if option has baidu, use custom method
     if (options.baidu === true) {
         map._getTopLeftPoint = _getTopLeftPointBaidu;
         map.setZoomAround = setZoomAroundBaidu;
+        map._getNewPixelOrigin = _getNewPixelOriginBaidu;
+        // TODO: just same code as Map.js
+        map._getCenterLayerPoint = _getCenterLayerPointBaidu;
     }
+
     return map;
 };
 
