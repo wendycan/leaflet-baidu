@@ -77,8 +77,8 @@ L.BTransformation.prototype = {
     /**
      * Don't know how it used currently.
      */
-    transform: function (point, zoom) {
-        return this._transform(point.clone(), zoom);
+    transform: function (point, scale, zoom) {
+        return this._transform(point.clone(), scale, zoom);
     },
 
     /**
@@ -89,9 +89,11 @@ L.BTransformation.prototype = {
      * @param {Number} zoom zoom level of the map
      * @return {Object} point, pixel coordinate
      */
-    _transform: function (point, zoom) {
+    _transform: function (point, scale, zoom) {
         point.x = point.x >> (this.MAXZOOM - zoom);
         point.y = point.y >> (this.MAXZOOM - zoom);
+        point.x = point.x + scale;
+        point.y = -point.y + scale;
         return point;
     },
 
@@ -103,9 +105,11 @@ L.BTransformation.prototype = {
      * @param {Number} zoom zoom level of the map
      * @return {Object} point, point coordinate
      */
-    untransform: function (point, zoom) {
-        var x = point.x << (this.MAXZOOM - zoom);
-        var y = point.y << (this.MAXZOOM - zoom);
+    untransform: function (point, scale, zoom) {
+        var x1 = point.x - scale;
+        var y1 = scale - point.y;
+        var x = x1 << (this.MAXZOOM - zoom);
+        var y = y1 << (this.MAXZOOM - zoom);
         return new L.Point(x, y);
     }
 };
@@ -126,7 +130,8 @@ L.CRS.BEPSG3857 = L.extend({}, L.CRS, {
      */
     latLngToPoint: function (latlng, zoom) { // (LatLng, Number) -> Point
         var projectedPoint = this.projection.project(latlng);
-        return this.transformation._transform(projectedPoint, zoom);
+        var scale = this.scale(zoom);
+        return this.transformation._transform(projectedPoint, scale, zoom);
     },
 
     /**
@@ -138,8 +143,14 @@ L.CRS.BEPSG3857 = L.extend({}, L.CRS, {
      * @return {Object} latitude and longitude
      */
     pointToLatLng: function (point, zoom) { // (Point, Number[, Boolean]) -> LatLng
-        var untransformedPoint = this.transformation.untransform(point, zoom);
+        var scale = this.scale(zoom);
+        var untransformedPoint = this.transformation.untransform(point, scale, zoom);
         return this.projection.unproject(untransformedPoint);
+    },
+
+    // defines how the world scales with zoom
+    scale: function (zoom) {
+        return 256 * Math.pow(2, zoom - 1);
     },
 
     // returns the bounds of the world in projected coords if applicable
@@ -162,109 +173,29 @@ L.CRS.BEPSG3857 = L.extend({}, L.CRS, {
 /**
  * Tile layer for Baidu Map
  *
- * @class Baidu
+ * @class BaiduLayer
  */
-L.Baidu = L.TileLayer.extend({
+L.TileLayer.BaiduLayer = L.TileLayer.extend({
     options: {
         subdomains: ['online1', 'online2', 'online3'],
         attribution: '© 2014 Baidu - GS(2012)6003;- Data © <a target="_blank" href="http://www.navinfo.com/">NavInfo</a> & <a target="_blank" href="http://www.cennavi.com.cn/">CenNavi</a> & <a target="_blank" href="http://www.365ditu.com/">DaoDaoTong</a>',
     },
 
-    /**
-     * initialize the map with key and tile URL
-     *
-     * @method initialize
-     * @param {String} key access key of baidu map
-     * @param {Object} options, option of the map
-     */
-    initialize: function (key, options) {
-        this._key = key;
-        var url = 'http://{s}.map.bdimg.com/tile/?qt=tile&x={x}&y={y}&z={z}&styles=pl';
+    initialize: function (url, options) {
+        url = url || 'http://{s}.map.bdimg.com/tile/?qt=tile&x={x}&y={y}&z={z}&styles=pl';
         L.TileLayer.prototype.initialize.call(this, url, options);
     },
 
-    /**
-     * Set the corresponding position of tiles in baidu map.
-     * if point.y is less or equal than 256, i.e. 35=>291, -221=>547
-     * if point.y is greater than 256, i.e. 291=>35, 547=>-221
-     *
-     * @method _getTilePos
-     * @param {Object} coords tile coordinate
-     * @return {Object} point left and top property of <img>
-     */
-    _getTilePos: function (coords) {
-        var map = this._map,
-            size = map.getSize(),
-            origin = this._level.origin;
-        var offsetX = coords.x * this._tileSize - origin.x;
-        var offsetY = origin.y + size.y - (coords.y + 1) * this._tileSize;
-        return new L.Point(offsetX, offsetY);
+    getTileUrl: function (coords) {
+        var offset = Math.pow(2, coords.z - 1),
+            x = coords.x - offset,
+            y = offset - coords.y - 1,
+            baiduCoords = L.point(x, y);
+        baiduCoords.z = coords.z;
+        return L.TileLayer.prototype.getTileUrl.call(this, baiduCoords);
     }
 });
 
-L.map = function (id, options) {
-    var map = new L.Map(id, options);
-
-    /**
-     * load new tiles when set zoom for baidu map
-     * Works well: mouse scroll. zoom level <= 14 in double click
-     * Works not well: zoom level > 14. Not Accurate at all.
-     * TODO: figure out why not accurate. Potential: CRS differences.
-     *
-     * @method _setZoomAroundBaidu
-     * @param {Object} latlng position of mouse clicked on the canvas
-     * @param {Number} zoom zoom level
-     * @param {Object} options options of the map
-     * @return {Object} TODO: not sure for now. probably the map itself
-     */
-    var setZoomAroundBaidu = function (latlng, zoom, options) {
-        var scale = this.getZoomScale(zoom);
-        var viewHalf = this.getSize().divideBy(2);
-        var containerPoint = latlng instanceof L.Point ? latlng : this.latLngToContainerPoint(latlng);
-        var centerOffset = containerPoint.subtract(viewHalf).multiplyBy(1 - 1 / scale);
-        var newCenter = this.containerPointToLatLng(viewHalf.add(centerOffset));
-        var oldCenterLat = this.getCenter().lat;
-        //add offset rather than minus it
-        newCenter.lat = oldCenterLat - newCenter.lat + oldCenterLat;
-        return this.setView(newCenter, zoom, {zoom: options});
-    };
-
-    /**
-     * Override _getTopLeftPoint method. For Baidu Map, if dragging
-     * down side of the map, y will increase rather than decrease.
-     * vice versa.
-     *
-     * @method _getTopLeftPoint
-     * @return {Object} point top left point
-     */
-    var _getTopLeftPointBaidu = function () {
-        var pixel = this.getPixelOrigin();
-        var pane = this._getMapPanePos();
-        var point = new L.Point(pixel.x - pane.x, pixel.y + pane.y);
-        return point;
-    };
-
-    var _containerPointToLayerPoint = function (point) { // (Point)
-        var pos = this._getMapPanePos();
-        return L.point(point)._subtract(L.point(pos.x, 0))._add(L.point(0, pos.y));
-    };
-
-    var _layerPointToContainerPoint = function (point) { // (Point)
-        var pos = this._getMapPanePos();
-        return L.point(point)._add(L.point(pos.x, 0))._subtract(L.point(0, pos.y));
-    };
-
-    //if option has baidu, use custom method
-    if (options.baidu === true) {
-        map._getTopLeftPoint = _getTopLeftPointBaidu;
-        map.setZoomAround = setZoomAroundBaidu;
-        map.containerPointToLayerPoint = _containerPointToLayerPoint;
-        map.layerPointToContainerPoint = _layerPointToContainerPoint;
-    }
-
-    return map;
-};
-
-L.baiduLayer = function (key, options) {
-    return new L.Baidu(key, options);
+L.tileLayer.baiduLayer = function (url, options) {
+    return new L.TileLayer.BaiduLayer(url, options);
 };

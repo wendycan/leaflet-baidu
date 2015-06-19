@@ -17,22 +17,19 @@
                 'map',
                 {
                     'crs': L.CRS.BEPSG3857,
-                    zoomControl: true,
-                    attributionControl: true,
                     // Coordinate of Tian'an Men of Baidu Coordinate
                     // 'center': [39.915, 116.404],
-                    // 'zoom': 13,
+                    // 'zoom': 18,
                     'minZoom': 3,
-                    'maxZoom': 18,
-                    //todo: is that possible to add it in TileLayer Constructor?
-                    'baidu': true
+                    'maxZoom': 18
                 }
             );
             // map.setView([0, 0], 3);
-            map.setView([64.117802, 75.355328], 3);
-            // L.control.scale().addTo(map);
-            var baidu = new L.Baidu('wEdGBRYrr5t1tF9X9cGbSmkB');
-            map.addLayer(baidu);
+            // map.setView([64.117802, 75.355328], 3);
+            map.setView([39.915, 116.404], 13);
+            L.control.scale().addTo(map);
+            var baiduLayer = new L.TileLayer.BaiduLayer();
+            map.addLayer(baiduLayer);
             L.marker(map.getCenter()).bindPopup(function (layer) {
                 return 'Leaflet ID is ' + layer._leaflet_id;
             }).addTo(map);
