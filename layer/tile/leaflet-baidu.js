@@ -53,65 +53,13 @@ L.Projection.BaiduSphericalMercator = {
             [-MAX_X, MIN_Y], //-180, -71.988531
             [MAX_X, MAX_Y]  //180, 74.000022
         );
+        var MAX = 33554432;
         bounds = new L.Bounds(
-            [-33554432, -33554432],
-            [33554432, 33554432]
+            [-MAX, -MAX],
+            [MAX, MAX]
         );
         return bounds;
     })()
-};
-
-/**
- * Transformation class for Baidu Transformation.
- * Basically, it contains the conversion of point coordinate and
- * pixel coordinate.
- *
- * @class BTransformation
- */
-L.BTransformation = function () {
-};
-
-L.BTransformation.prototype = {
-    // MAXZOOM: 19,
-    MAXZOOM: 18,
-    /**
-     * Don't know how it used currently.
-     */
-    transform: function (point, scale, zoom) {
-        return this._transform(point.clone(), scale, zoom);
-    },
-
-    /**
-     * transform point coordinate to pixel coordinate
-     *
-     * @method _transform
-     * @param {Object} point point coordinate
-     * @param {Number} zoom zoom level of the map
-     * @return {Object} point, pixel coordinate
-     */
-    _transform: function (point, scale, zoom) {
-        point.x = point.x >> (this.MAXZOOM - zoom);
-        point.y = point.y >> (this.MAXZOOM - zoom);
-        point.x = point.x + scale;
-        point.y = -point.y + scale;
-        return point;
-    },
-
-    /**
-     * transform pixel coordinate to point coordinate
-     *
-     * @method untransform
-     * @param {Object} point pixel coordinate
-     * @param {Number} zoom zoom level of the map
-     * @return {Object} point, point coordinate
-     */
-    untransform: function (point, scale, zoom) {
-        var x1 = point.x - scale;
-        var y1 = scale - point.y;
-        var x = x1 << (this.MAXZOOM - zoom);
-        var y = y1 << (this.MAXZOOM - zoom);
-        return new L.Point(x, y);
-    }
 };
 
 /**
@@ -120,54 +68,14 @@ L.BTransformation.prototype = {
  * @class BEPSG3857
  */
 L.CRS.BEPSG3857 = L.extend({}, L.CRS, {
-    /**
-     * transform latLng to pixel coordinate
-     *
-     * @method latLngToPoint
-     * @param {Object} latlng latitude and longitude
-     * @param {Number} zoom zoom level of the map
-     * @return {Object} pixel coordinate calculated for latLng
-     */
-    latLngToPoint: function (latlng, zoom) { // (LatLng, Number) -> Point
-        var projectedPoint = this.projection.project(latlng);
-        var scale = this.scale(zoom);
-        return this.transformation._transform(projectedPoint, scale, zoom);
-    },
-
-    /**
-     * transform pixel coordinate to latLng
-     *
-     * @method pointToLatLng
-     * @param {Object} point pixel coordinate
-     * @param {Number} zoom zoom level of the map
-     * @return {Object} latitude and longitude
-     */
-    pointToLatLng: function (point, zoom) { // (Point, Number[, Boolean]) -> LatLng
-        var scale = this.scale(zoom);
-        var untransformedPoint = this.transformation.untransform(point, scale, zoom);
-        return this.projection.unproject(untransformedPoint);
-    },
-
-    // defines how the world scales with zoom
-    scale: function (zoom) {
-        return 256 * Math.pow(2, zoom - 1);
-    },
-
-    // returns the bounds of the world in projected coords if applicable
-    getProjectedBounds: function (zoom) {
-        if (this.infinite) { return null; }
-
-        var b = this.projection.bounds,
-            min = this.transformation.transform(b.min, zoom),
-            max = this.transformation.transform(b.max, zoom);
-
-        return L.bounds(min, max);
-    },
-
     code: 'EPSG:3857',
     projection: L.Projection.BaiduSphericalMercator,
 
-    transformation: new L.BTransformation()
+    transformation: (function () {
+        var z = -18 - 8;
+        var scale = Math.pow(2, z);
+        return new L.Transformation(scale, 0.5, -scale, 0.5);
+    }())
 });
 
 /**
@@ -177,6 +85,8 @@ L.CRS.BEPSG3857 = L.extend({}, L.CRS, {
  */
 L.TileLayer.BaiduLayer = L.TileLayer.extend({
     options: {
+        minZoom: 3,
+        maxZoom: 19,
         subdomains: ['online1', 'online2', 'online3'],
         attribution: '© 2014 Baidu - GS(2012)6003;- Data © <a target="_blank" href="http://www.navinfo.com/">NavInfo</a> & <a target="_blank" href="http://www.cennavi.com.cn/">CenNavi</a> & <a target="_blank" href="http://www.365ditu.com/">DaoDaoTong</a>',
     },
