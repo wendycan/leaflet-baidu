@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Leaflet with Baidu Map tiles</title>
+
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <link rel="stylesheet" href="https://rawgit.com/Leaflet/Leaflet/master/dist/leaflet.css" />
+        <script type="text/javascript" src="https://rawgit.com/Leaflet/Leaflet/master/build/deps.js"></script>
+        <script src="https://rawgit.com/Leaflet/Leaflet/master/debug/leaflet-include.js"></script>
+ 
+        <script src="http://api.map.baidu.com/api?v=1.5&ak=Gt0BG62R7T5GDvuPSj65MBl4"></script>
+        <script src="../layer/tile/leaflet-baidu.js"></script>
+    </head>
+    <body>
+        <div style="width:768px; height:512px;" id="map"></div>
+        <button id="pan-left">Pan left to see problem</button>
+        <button id="reset">Reset</button>
+        <script type='text/javascript'>
+            map = new L.map(
+                'map',
+                {
+                    'crs': L.CRS.BEPSG3857,
+                    // Coordinate of Tian'an Men of Baidu Coordinate
+                    // 'center': [39.915, 116.404],
+                    // 'zoom': 18,
+                    // zoomAnimation: false
+                }
+            );
+            // map.setView([0, 0], 3);
+            // map.setView([64.117802, 75.355328], 3);
+            map.setView([43.813211, 173.964839], 3);
+            L.control.scale().addTo(map);
+            var baiduLayer = new L.TileLayer.BaiduLayer();
+            map.addLayer(baiduLayer);
+            L.marker(map.getCenter()).bindPopup(function (layer) {
+                return 'Leaflet ID is ' + layer._leaflet_id;
+            }).addTo(map);
+
+            document.getElementById('pan-left').onclick = function () {
+                map.panBy([40, 0]);
+            };
+            document.getElementById('reset').onclick = function () {
+                map.setView([43.813211, 173.964839], 3);
+            };
+        </script>
+    </body>
+</html>
