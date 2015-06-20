@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Have bounds issue with leaflet-master</title>
+        <title>No bounds issue with leaflet-stable</title>
 
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        <link rel="stylesheet" href="https://rawgit.com/Leaflet/Leaflet/master/dist/leaflet.css" />
-        <script type="text/javascript" src="https://rawgit.com/Leaflet/Leaflet/master/build/deps.js"></script>
-        <script src="https://rawgit.com/Leaflet/Leaflet/master/debug/leaflet-include.js"></script>
+        <link rel="stylesheet" href="https://rawgit.com/Leaflet/Leaflet/stable/dist/leaflet.css" />
+        <script type="text/javascript" src="https://rawgit.com/Leaflet/Leaflet/stable/build/deps.js"></script>
+        <script src="https://rawgit.com/Leaflet/Leaflet/stable/debug/leaflet-include.js"></script>
  
         <script src="http://api.map.baidu.com/api?v=1.5&ak=Gt0BG62R7T5GDvuPSj65MBl4"></script>
         <script src="../layer/tile/leaflet-baidu.js"></script>
     </head>
     <body>
         <div style="width:768px; height:512px;" id="map"></div>
-        <button id="pan-left">Pan left to see problem</button>
+        <button id="pan-left">Pan left 40px</button>
         <button id="reset">Reset</button>
         <script type='text/javascript'>
             map = new L.map(
