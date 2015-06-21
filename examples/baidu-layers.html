@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Baidu Map switch between layers</title>
+
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <link rel="stylesheet" href="https://rawgit.com/Leaflet/Leaflet/master/dist/leaflet.css" />
+        <script type="text/javascript" src="https://rawgit.com/Leaflet/Leaflet/master/build/deps.js"></script>
+        <script src="https://rawgit.com/Leaflet/Leaflet/master/debug/leaflet-include.js"></script>
+ 
+        <script src="http://api.map.baidu.com/api?v=1.5&ak=Gt0BG62R7T5GDvuPSj65MBl4"></script>
+        <script src="../layer/tile/leaflet-baidu.js"></script>
+    </head>
+    <body>
+        <div style="width:768px; height:512px" id="map"></div>
+        <script type='text/javascript'>
+            var normalm = L.tileLayer.baiduLayer('Normal.Map');
+            var imgm = L.tileLayer.baiduLayer('Satellite.Map');
+            var imga = L.tileLayer.baiduLayer('Satellite.Road');
+
+            var normal = L.layerGroup([normalm]),
+                image = L.layerGroup([imgm, imga]);
+
+            map = new L.map('map', {'crs': L.CRS.BEPSG3857});
+            map.addLayer(normal).setView([39.915, 116.404], 15);
+
+            L.control.scale().addTo(map);
+            L.control.layers({
+                '地图': normal,
+                '卫星': image,
+            }, {})
+            .addTo(map);
+
+            L.marker(map.getCenter()).bindPopup(function (layer) {
+                return 'Leaflet ID is ' + layer._leaflet_id;
+            }).addTo(map);
+        </script>
+    </body>
+</html>
