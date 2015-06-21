@@ -84,15 +84,25 @@ L.CRS.BEPSG3857 = L.extend({}, L.CRS, {
  * @class BaiduLayer
  */
 L.TileLayer.BaiduLayer = L.TileLayer.extend({
-    options: {
-        minZoom: 3,
-        maxZoom: 19,
-        subdomains: ['online1', 'online2', 'online3'],
-        attribution: '© 2014 Baidu - GS(2012)6003;- Data © <a target="_blank" href="http://www.navinfo.com/">NavInfo</a> & <a target="_blank" href="http://www.cennavi.com.cn/">CenNavi</a> & <a target="_blank" href="http://www.365ditu.com/">DaoDaoTong</a>',
+    statics: {
+        attribution: '© 2014 Baidu - GS(2012)6003;- Data © <a target="_blank" href="http://www.navinfo.com/">NavInfo</a> & <a target="_blank" href="http://www.cennavi.com.cn/">CenNavi</a> & <a target="_blank" href="http://www.365ditu.com/">DaoDaoTong</a>'
     },
 
-    initialize: function (url, options) {
-        url = url || 'http://{s}.map.bdimg.com/tile/?qt=tile&x={x}&y={y}&z={z}&styles=pl';
+    options: {
+        minZoom: 3,
+        maxZoom: 19
+    },
+
+    initialize: function (type, options) {
+        var desc = L.TileLayer.BaiduLayer.desc;
+        type = type || 'Normal.Map';
+        var parts = type.split('.');
+        var mapName = parts[0],
+            mapType = parts[1];
+        var url = desc[mapName][mapType];
+        options = options || {};
+        options.subdomains = desc.subdomains;
+        options.attribution = L.TileLayer.BaiduLayer.attribution;
         L.TileLayer.prototype.initialize.call(this, url, options);
     },
 
@@ -106,6 +116,17 @@ L.TileLayer.BaiduLayer = L.TileLayer.extend({
     }
 });
 
-L.tileLayer.baiduLayer = function (url, options) {
-    return new L.TileLayer.BaiduLayer(url, options);
+L.TileLayer.BaiduLayer.desc = {
+    Normal: {
+        Map: 'http://online{s}.map.bdimg.com/tile/?qt=tile&x={x}&y={y}&z={z}&styles=pl'
+    },
+    Satellite: {
+        Map: 'http://shangetu{s}.map.bdimg.com/it/u=x={x};y={y};z={z};v=009;type=sate&fm=46',
+        Road: 'http://online{s}.map.bdimg.com/tile/?qt=tile&x={x}&y={y}&z={z}&styles=sl'
+    },
+    subdomains: '0123456789'
+};
+
+L.tileLayer.baiduLayer = function (type, options) {
+    return new L.TileLayer.BaiduLayer(type, options);
 };
