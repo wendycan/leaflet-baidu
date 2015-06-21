@@ -33,9 +33,7 @@
             L.control.scale().addTo(map);
             var baiduLayer = new L.TileLayer.BaiduLayer();
             map.addLayer(baiduLayer);
-            L.marker(map.getCenter()).bindPopup(function (layer) {
-                return 'Leaflet ID is ' + layer._leaflet_id;
-            }).addTo(map);
+            L.marker(map.getCenter()).bindPopup('I\'m a popup!').addTo(map);
         </script>
     </body>
 </html>
