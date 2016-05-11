@@ -13,9 +13,9 @@ L.Projection.BaiduSphericalMercator = {
      */
     project: function(latLng) {
         var projection = new BMap.MercatorProjection();
-        var point = projection.lngLatToPoint(
-            new BMap.Point(latLng.lng, latLng.lat)
-        );
+        var originalPoint = new BMap.Point(latLng.lng, latLng.lat);
+        var baiduPoint = window.translatePoint(originalPoint);
+        var point = projection.lngLatToPoint(baiduPoint);
         var leafletPoint = new L.Point(point.x, point.y);
         return leafletPoint;
     },
