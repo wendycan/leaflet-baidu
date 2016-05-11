@@ -1,4 +1,4 @@
-window._translatePoint = function (originalPoint) {
+var _translatePoint = function (originalPoint) {
   var i = 0;
   return new Promise(function(resolve, reject){
     var baiduPoint;
@@ -11,7 +11,9 @@ window._translatePoint = function (originalPoint) {
   });
 };
 
-async function TranslatePoint(originalPoint){
+async function translatePoint(originalPoint){
   var data = await _translatePoint(originalPoint);
   return data;
 };
+
+window.translatePoint = translatePoint;
